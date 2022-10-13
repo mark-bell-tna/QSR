@@ -1,78 +1,65 @@
 #!/usr/bin/python3
 
-import xmltodict
+import xml.etree.cElementTree as ElementTree
 
-def chartotype(text):
-    outtext = []
-    for t in text:
-        c = ord(t)
-        if 97 <= c <= 122:
-            outtext.append("a")
-        elif 65 <= c <= 90:
-            outtext.append("A")
-        elif 48 <= c <= 57:
-            outtext.append("9")
-        else:
-            outtext.append(t)
-    return "".join(outtext)
+class XmlListConfig(list):
+    def __init__(self, aList):
+        for element in aList:
+            if element:
+                # treat like dict
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    self.append(XmlDictConfig(element))
+                # treat like list
+                elif element[0].tag == element[1].tag:
+                    self.append(XmlListConfig(element))
+            elif element.text:
+                text = element.text.strip()
+                if text:
+                    self.append(text)
 
-c = 0
-formats = {}
 
-import os
+class XmlDictConfig(dict):
+    '''
+    Example usage:
 
-data_root = "/home/research1/QSR/Data/"
-for yr in ['Seals']:
-    data_dir = data_root + yr + "/"
-    filenames = os.listdir(data_dir)
-    for f in filenames:
-        X = xmltodict.parse(open(data_dir + f, 'rb'))
+    >>> tree = ElementTree.parse('your_file.xml')
+    >>> root = tree.getroot()
+    >>> xmldict = XmlDictConfig(root)
 
-        V = X['alto']['Layout']['Page'].values()
+    Or, if you want to use an XML string:
 
-        if 'TextBlock' not in X['alto']['Layout']['Page']['PrintSpace']:
-            continue
-        for k,v in enumerate(X['alto']['Layout']['Page']['PrintSpace']['TextBlock']):
-            if isinstance(v, list):
-                continue
-            if isinstance(v, str):
-                continue
-            try:
-                textline = v['TextLine']
-            except:
-                print(v, type(v))
-                print("error")
-                exit()
-            if not isinstance(textline, list):
-                textline = [textline]
-            print("******* BLOCK",k,"**********")
-            for i,line in enumerate(textline):
-                #print(v['@HPOS'], line['@HPOS'])
-                line = line['String']
-                t = []
-                #print(type(line),line)
-                if not isinstance(line, list):
-                    line = [line]
-                for e,entry in enumerate(line):
-                    #print(entry)
-                    content = entry['@CONTENT']
-                    if e == 0:
-                        form = chartotype(content)
-                        if form not in formats:
-                            formats[form] = 1
-                        else:
-                            formats[form] += 1
-                    t.append(entry['@CONTENT'])
-                print(i," ".join(t))
+    >>> root = ElementTree.XML(xml_string)
+    >>> xmldict = XmlDictConfig(root)
 
-from operator import itemgetter
-
-print("**************numbers*****************")
-numeric_forms = sorted([(k,v) for k,v in formats.items() if '9' in k], key=itemgetter(1), reverse=True)
-for sf in numeric_forms[0:10]:
-    print(sf)
-
-print("**************text*****************")
-text_forms = sorted([(k,v) for k,v in formats.items() if '9' not in k], key=itemgetter(1), reverse=True)
-for sf in text_forms[0:10]:
-    print(sf)
+    And then use xmldict for what it is... a dict.
+    '''
+    def __init__(self, parent_element):
+        if parent_element.items():
+            self.update(dict(parent_element.items()))
+        for element in parent_element:
+            if element:
+                # treat like dict - we assume that if the first two tags
+                # in a series are different, then they are all different.
+                if len(element) == 1 or element[0].tag != element[1].tag:
+                    aDict = XmlDictConfig(element)
+                # treat like list - we assume that if the first two tags
+                # in a series are the same, then the rest are the same.
+                else:
+                    # here, we put the list in dictionary; the key is the
+                    # tag name the list elements all share in common, and
+                    # the value is the list itself 
+                    aDict = {element[0].tag: XmlListConfig(element)}
+                # if the tag has attributes, add those to the dict
+                if element.items():
+                    aDict.update(dict(element.items()))
+                self.update({element.tag: aDict})
+            # this assumes that if you've got an attribute in a tag,
+            # you won't be having any text. This may or may not be a 
+            # good idea -- time will tell. It works for the way we are
+            # currently doing XML configuration files...
+            elif element.items():
+                self.update({element.tag: dict(element.items())})
+            # finally, if there are no child tags and no attributes, extract
+            # the text
+            else:
+                self.update({element.tag: element.text})

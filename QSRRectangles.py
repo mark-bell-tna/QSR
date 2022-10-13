@@ -2,111 +2,127 @@
 
 class Rectangle:
     
-    # FL = Furthest left
-    # FR = Furthest right
-    # HP = Highest point
-    # LP = Lowest point
-
     def __init__(self,coordinates):
-        if isinstance(coordinates, str):
-            self.coordinates = self._coords_from_string(coordinates)
-        elif isinstance(coordinates, Rectangle):  # This isn't great but will do for now
-            c = coordinates
-            self.coordinates = ((c.fl, c.hp), (c.fr, c.hp), (c.fr, c.lp), (c.fr, c.lp))
-        elif isinstance(coordinates, dict):
-            c = coordinates
-            self.coordinates = ((int(c["fl"]), int(c["hp"])), (int(c["fr"]), int(c["hp"])), (int(c["fr"]), int(c["lp"])), (int(c["fr"]), int(c["lp"])))
-        else:
-            self.coordinates = coordinates
+        self.coordinates = coordinates
         self.set_rect_descriptor()
         
-    def _coords_from_string(self, coords):
-        return ([[int(x) for x in y.split(",")] for y in coords.split(" ")])
-
     def set_rect_descriptor(self):
-        # Rationalise polygon coordinates [horizontal, vertical] to bounding box
-        #self.descriptor = {}
-        #self.descriptor['FL'] = min([k[0] for k in self.coordinates])
-        #self.descriptor['FR'] = max([k[0] for k in self.coordinates])
-        #self.hp = min([k[1] for k in self.coordinates])
-        #self.lp = max([k[1] for k in self.coordinates])
-        self.fl = min([k[0] for k in self.coordinates])
-        self.fr = max([k[0] for k in self.coordinates])
-        self.hp = min([k[1] for k in self.coordinates])
-        self.lp = max([k[1] for k in self.coordinates])
+        self.descriptor = {}
+        self.descriptor['FL'] = min([k[0] for k in self.coordinates])
+        self.descriptor['FR'] = max([k[0] for k in self.coordinates])
+        self.descriptor['HP'] = min([k[1] for k in self.coordinates])
+        self.descriptor['LP'] = max([k[1] for k in self.coordinates])
+        
+    def get_coordinates(self, original=False):
+        if original:
+            return self.coordinates
+        D = self.descriptor
+        box_coords = [[D['FL'], D['HP']],   # top left corner
+                      [D['FR'], D['HP']],   # top right corner
+                      [D['FL'], D['LP']],   # bottom left corner
+                      [D['FR'], D['LP']]]   # bottomr right corner
+        return box_coords
+                      
+    @property
+    def left(self):
+        return self.descriptor["FL"]
+    
+    @property
+    def right(self):
+        return self.descriptor["FR"]
+    
+    @property
+    def top(self):
+        return self.descriptor["HP"]
+        
+    @property
+    def bottom(self):
+        return self.descriptor["LP"]
+    
+    @property
+    def height(self):
+        return self.bottom-self.top
+        
+    @property
+    def length(self):
+        return self.right-self.left
         
     def get_descriptor(self):
         return(self.descriptor)
+        
+    def union(self, other):
+        union_rect = Rectangle(self.get_coordinates() + other.get_coordinates())
+        return union_rect
    
+    def get_vertical_coords(self):
+        return([self.descriptor['HP'], self.descriptor['LP']])
+        
+    def get_horizontal_coords(self):
+        return([self.descriptor['FL'], self.descriptor['FR']])
+        
     def is_above(self,rect2):
-        if self.hp  < rect2.hp:
+        if self.descriptor['HP']  < rect2.descriptor['HP']:
             return(True)
         return(False)
     
     def is_below(self,rect2):
-        if self.lp  > rect2.lp:
+        if self.descriptor['LP']  > rect2.descriptor['LP']:
             return(True)
         return(False)
 
     def is_leftof(self,rect2):
-        if self.fl  < rect2.fl:
+        if self.descriptor['FL']  < rect2.descriptor['FL']:
             return(True)
         return(False)
 
     def is_rightof(self,rect2):
-        if self.fr  > rect2.fr:
+        if self.descriptor['FR']  > rect2.descriptor['FR']:
             return(True)
         return(False)
     
     def is_equal(self, rect2):
-        if self.fl != rect2.fl:
+        if self.descriptor['FL'] != rect2.get_descriptor()['FL']:
             return(False)
-        if self.fr != rect2.fr:
+        if self.descriptor['FR'] != rect2.get_descriptor()['FR']:
             return(False)
-        if self.hp != rect2.hp:
+        if self.descriptor['HP'] != rect2.get_descriptor()['HP']:
             return(False)
-        if self.lp != rect2.lp:
+        if self.descriptor['LP'] != rect2.get_descriptor()['LP']:
             return(False)
         return(True)
     
-    def get_width(self):
-        return self.fr-self.fl
-
-    def get_height(self):
-        return self.lp-self.hp
-
     def has_horizontal_overlap(self, rect2):
-        this_len = self.fr - self.fl
-        other_len = rect2.fr - rect2.fl
-        whole_len = max(self.fr, rect2.fr) - \
-                    min(self.fl, rect2.fl)
+        this_len = self.descriptor['FR'] - self.descriptor['FL']
+        other_len = rect2.get_descriptor()['FR'] - rect2.get_descriptor()['FL']
+        whole_len = max(self.descriptor['FR'], rect2.get_descriptor()['FR']) - \
+                    min(self.descriptor['FL'], rect2.get_descriptor()['FL'])
         if whole_len < this_len + other_len:
             return(True)
         return(False)
     
     def has_vertical_overlap(self, rect2):
-        this_len = self.lp - self.hp
-        other_len = rect2.lp - rect2.hp
-        whole_len = max(self.lp, rect2.lp) - \
-                    min(self.hp, rect2.hp)
+        this_len = self.descriptor['LP'] - self.descriptor['HP']
+        other_len = rect2.get_descriptor()['LP'] - rect2.get_descriptor()['HP']
+        whole_len = max(self.descriptor['LP'], rect2.get_descriptor()['LP']) - \
+                    min(self.descriptor['HP'], rect2.get_descriptor()['HP'])
         if whole_len < this_len + other_len:
             return(True)
         return(False)
     
     def has_horizontal_abuttal(self, rect2):
-        this_len = self.lp - self.hp
-        other_len = rect2.lp - rect2.hp
-        whole_len = max(self.lp, rect2.lp) - \
-                    min(self.hp, rect2.hp)
+        this_len = self.descriptor['LP'] - self.descriptor['HP']
+        other_len = rect2.get_descriptor()['LP'] - rect2.get_descriptor()['HP']
+        whole_len = max(self.descriptor['LP'], rect2.get_descriptor()['LP']) - \
+                    min(self.descriptor['HP'], rect2.get_descriptor()['HP'])
         if whole_len == this_len + other_len:
             return(True)
         return(False)
 
     def has_vertical_abuttal(self, rect2):
-        this_len = self.lp - self.hp
-        other_len = rect2.lp - rect2.hp
-        whole_len = max(self.lp, rect2.lp) - \
-                    min(self.hp, rect2.hp)
+        this_len = self.descriptor['LP'] - self.descriptor['HP']
+        other_len = rect2.get_descriptor()['LP'] - rect2.get_descriptor()['HP']
+        whole_len = max(self.descriptor['LP'], rect2.get_descriptor()['LP']) - \
+                    min(self.descriptor['HP'], rect2.get_descriptor()['HP'])
         if whole_len == this_len + other_len:
             return(True)
         return(False)
@@ -134,6 +150,8 @@ class Rectangle:
         return(False)
     
     def is_proper_part(self, rect2):
+        if not self.has_overlap(rect2):
+            return(False)
         if self.is_above(rect2):
             return(False)
         if self.is_below(rect2):
@@ -142,17 +160,17 @@ class Rectangle:
             return(False)
         if self.is_rightof(rect2):
             return(False)
-        if not self.has_overlap(rect2):
-            return(False)
         return(True)
     
     def is_tangential_proper_part(self, rect2):
-        if not self.is_proper_part(rect2):
-            return(False)
         if self.is_equal(rect2):
             return(False)
-        if self.has_vertical_abuttal(rect2) or self.has_horizontal_abuttal(rect2):
-            return(True)
+        if not self.is_proper_part(rect2):
+            return(False)
+        other_descriptor = rect2.get_descriptor()
+        for k, v in self.descriptor.items():
+            if v == other_descriptor[k]:
+                return(True)
         return(False)
     
     def is_inverse_proper_part(self, rect2):
@@ -161,6 +179,14 @@ class Rectangle:
     def is_inverse_tangential_proper_part(self, rect2):
         return(rect2.is_tangential_proper_part(self))
     
+    def get_euclid(self, rect2):
+        a_x = (self.descriptor['FR'] - self.descriptor['FL']) / 2
+        a_y = (self.descriptor['LP'] - self.descriptor['HP']) / 2
+        b_x = (rect2.descriptor['FR'] - rect2.descriptor['FL']) / 2
+        b_y = (rect2.descriptor['LP'] - rect2.descriptor['HP']) / 2
+
+        return ((a_x-b_x)**2 + (a_y-b_y)**2) ** 0.5
+
     def get_rcc8_class(self, rect2):
         if self.is_disconnected(rect2):
             return("DC")
@@ -184,7 +210,11 @@ class Rectangle:
         # 0 = Connected
         # 1 = North
         # 2 = North East
-        # ...
+        # 3 = East
+        # 4 = South East
+        # 5 = South
+        # 6 = South West
+        # 7 = West
         # 8 = North West
         if not self.is_disconnected(rect2):
             return(0)
@@ -207,10 +237,12 @@ class Rectangle:
             return((3 + (vertical_orientation*-horizontal_orientation)) + (horizontal_orientation > 0) * 4)
 
     def __str__(self):
-        return(",".join([str(x) for x in [self.fl, self.hp, self.fr, self.lp]]))
-
+        return ",".join([str(self.left), str(self.right), str(self.top), str(self.bottom)])
+        
+        
     def __repr__(self):
-        return (str(self))
+        
+        return str(self)
 
 
 if __name__ == '__main__':
@@ -226,8 +258,12 @@ if __name__ == '__main__':
     rect6 = Rectangle([(40,50),(50,50),(50,70),(40,70)])  # Small inner box, touching - TPPi
     rect7 = Rectangle([(50,50),(80,50),(80,60),(50,60)])  # Small box, overlapping - PO
     rect8 = Rectangle([(90,0),(100,0),(100,10),(90,10)])  # Small box outside - DC"
-    print(rect8._coords_from_string("1,2 3,4 5,6 6,7"))
     
+    A = rect5
+    B = rect8
+    print(A.descriptor)
+    print(B.descriptor)
+    print(A.union(B).descriptor)
     #  EQ
     #  NTPP
     #  TPP
@@ -236,13 +272,13 @@ if __name__ == '__main__':
     #  TPPi
     #  PO
     #  DC
-    print(rect1.get_rcc8_class(rect1))
-    print(rect1.get_rcc8_class(rect2))
-    print(rect1.get_rcc8_class(rect3))
-    print(rect1.get_rcc8_class(rect4))
-    print(rect1.get_rcc8_class(rect5))
-    print(rect1.get_rcc8_class(rect6))
-    print(rect1.get_rcc8_class(rect7))
-    print(rect1.get_rcc8_class(rect8))
-    print(rect1.get_direction_of_other(rect8)) # North east = 2
-    print(rect1.get_direction_of_other(rect2)) # Overlapping = 0"
+    #print(rect1.get_rcc8_class(rect1))
+    #print(rect1.get_rcc8_class(rect2))
+    #print(rect1.get_rcc8_class(rect3))
+    #print(rect1.get_rcc8_class(rect4))
+    #print(rect1.get_rcc8_class(rect5))
+    #print(rect1.get_rcc8_class(rect6))
+    #print(rect1.get_rcc8_class(rect7))
+    #print(rect1.get_rcc8_class(rect8))
+    #print(rect1.get_direction_of_other(rect8)) # North east = 2
+    #print(rect1.get_direction_of_other(rect2)) # Overlapping = 0"
