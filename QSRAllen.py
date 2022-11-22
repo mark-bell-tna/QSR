@@ -2,7 +2,7 @@
 
 class AllenIntervals:
     
-    description = {'XY': {1: 'before', 2: 'equals', 3: 'meets', 4: 'overlaps', 5: 'contains', 6: 'starts', 7: 'finishes'},
+    description_lookup = {'XY': {1: 'before', 2: 'equals', 3: 'meets', 4: 'overlaps', 5: 'contains', 6: 'starts', 7: 'finishes'},
                    'YX': {1: 'after', 2: 'equals', 3: 'met by', 4: 'overlapped by', 5: 'during', 6: 'started by', 7: 'finished by'}}
                    
     def __init__(self, start_point, end_point, orientation):
@@ -11,32 +11,27 @@ class AllenIntervals:
         self.orientation = orientation
 
      
-    def get_relationship(self, other, inverse=False):
+    def get_relationship(self, other):
         
         if self.orientation != other.orientation:
             return None
-            
-        if inverse:
-            X = other
-            Y = self
-            desc_key = 'YX'
-        else:
-            X = self
-            Y = other
-            desc_key = 'XY'
-            
-        relationship = self._calc_relationship(X,Y)
+        
+        X = self
+        Y = other
+        relationship = self._calc_relationship(other)
         desc_key = 'XY'
         if relationship is None:
-            relationship = self._calc_relationship(Y, X)
+            relationship = other._calc_relationship(self)
             desc_key = 'YX'
         #print("\t",X.start_point, X.end_point, Y.start_point, Y.end_point)
         print("\t", " " * X.start_point + "*" * (X.end_point-X.start_point))
         print("\t", " " * Y.start_point + "*" * (Y.end_point-Y.start_point))
-        return " ".join(['X', str(self.description[desc_key][relationship]), 'Y'])
+        return " ".join(['X', str(self.description_lookup[desc_key][relationship]), 'Y'])
         
-    def _calc_relationship(self, X, Y):
+    def _calc_relationship(self, other):
         
+        X = self
+        Y = other
         if X.start_point < X.end_point < Y.start_point < Y.end_point:
             return 1
         if X.start_point == Y.start_point < X.end_point == Y.end_point:

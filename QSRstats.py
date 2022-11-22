@@ -127,6 +127,9 @@ class QSRstats:
             
         KM = KMeans(n_clusters=clusters).fit(X=X, sample_weight=W)
         return KM
+    
+    def get_KM_centres(self, KM):
+        return KM.cluster_centers_
         
     def get_distrib_labels(self, distrib, KM):
         return dict((k,KM.labels_[i]) for i,k in enumerate(distrib.keys()))
